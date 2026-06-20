@@ -1,4 +1,21 @@
 const express = require("express");
+const { Client } = require("pg");
+
+const client = new Client({
+    host: "localhost",
+    port: 5432,
+    user: "postgres",
+    password: "Ayan2005@",
+    database: "url_shortener"
+});
+
+client.connect()
+    .then(() => {
+        console.log("Connected to PostgreSQL");
+    })
+    .catch((err) => {
+        console.error("Connection failed", err);
+    });
 
 const app = express();
 
@@ -27,7 +44,7 @@ function generateShortCode(id) {
     return shortCode.padStart(6, "a");
 }
 
-app.post("/shorten", (req, res) => {
+app.post("/shorten", async (req, res) => {
     const originalUrl = req.body.url;
 
     if (!originalUrl) {
@@ -36,32 +53,48 @@ app.post("/shorten", (req, res) => {
         });
     }
 
-    if (urlToId[originalUrl]) {
-        const existingId = urlToId[originalUrl];
+    const result = await client.query(
+    `
+    SELECT id
+    FROM urls
+    WHERE original_url = $1
+    `,
+    [originalUrl]
+    );
 
-        const existingShortCode =
-            generateShortCode(existingId);
+    if (result.rows.length > 0) {
+    const existingId =
+        Number(result.rows[0].id);
 
-        return res.json({
-            shortUrl:
-                `http://localhost:3000/${existingShortCode}`
-        });
+    const existingShortCode =
+        generateShortCode(existingId);
+
+    return res.json({
+        shortUrl:
+            `http://localhost:3000/${existingShortCode}`
+    });
     }
 
-    const id = nextId;
+    const insertResult = await client.query(
+    `
+    INSERT INTO urls (original_url)
+    VALUES ($1)
+    RETURNING id
+    `,
+    [originalUrl]
+    );
 
-    idToUrl[id] = originalUrl;
+    const newId =
+    Number(insertResult.rows[0].id);
 
-    urlToId[originalUrl] = id;
-
-    const shortCode = generateShortCode(id);
-
-    nextId++;
+    const shortCode =
+    generateShortCode(newId);
 
     res.json({
-        shortUrl:
-            `http://localhost:3000/${shortCode}`
+    shortUrl:
+        `http://localhost:3000/${shortCode}`
     });
+
 });
 
 function getIdFromShortCode(shortCode) {
