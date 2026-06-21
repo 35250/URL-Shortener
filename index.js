@@ -5,7 +5,7 @@ const client = new Client({
     host: "localhost",
     port: 5432,
     user: "postgres",
-    password: "NONDISCLOSURE",
+    password: "Ayan2005@",
     database: "url_shortener"
 });
 
@@ -21,18 +21,13 @@ const app = express();
 
 app.use(express.json());
 
-let nextId = 1;
-
-const idToUrl = {};
-
-const urlToId = {};
-
 function generateShortCode(id) {
     const chars =
         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
     let shortCode = "";
 
+    // Converts a numeric ID into a fixed-length Base62 shortcode.
     while (id > 0) {
         const remainder = id % 62;
 
@@ -102,7 +97,8 @@ function getIdFromShortCode(shortCode) {
         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
     let id = 0;
-
+    
+    // Converts a fixed-length Base62 shortcode into a numeric ID.
     for (let i = 0; i < shortCode.length; i++) {
         const value = chars.indexOf(shortCode[i]);
 
@@ -112,17 +108,25 @@ function getIdFromShortCode(shortCode) {
     return id;
 }
 
-app.get("/:shortCode", (req, res) => {
+app.get("/:shortCode", async(req, res) => {
     const shortCode = req.params.shortCode;
 
     const id = getIdFromShortCode(shortCode);
 
-    const originalUrl = idToUrl[id];
+    const result= await client.query(
+        ` 
+        SELECT original_url
+        FROM urls
+        WHERE id= $1
+        `,
+        [id]
+    );
 
-    if (!originalUrl) {
+    if (result.rows.length === 0) {
         return res.status(404).send("URL not found");
     }
 
+    const originalUrl= result.rows[0].original_url;
     res.redirect(originalUrl);
 });
 
