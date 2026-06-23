@@ -2,13 +2,28 @@ const express = require("express");
 require("dotenv").config();
 const { Client } = require("pg");
 
+const {
+    PORT,
+    DB_HOST,
+    DB_PORT,
+    DB_USER,
+    DB_PASSWORD,
+    DB_NAME
+} = process.env;
+
 const client = new Client({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
+    host: DB_HOST,
+    port: DB_PORT,
+    user: DB_USER,
+    password: DB_PASSWORD,
+    database: DB_NAME
 });
+
+if (!DB_PASSWORD) {
+    throw new Error(
+        "DB_PASSWORD is missing."
+    );
+}
 
 client.connect()
     .then(() => {
@@ -41,56 +56,63 @@ function generateShortCode(id) {
 }
 
 app.post("/shorten", async (req, res) => {
-    const originalUrl = req.body.url;
+    try{
+        const originalUrl = req.body.url;
 
-    if (!originalUrl) {
-        return res.status(400).json({
-            error: "URL is required"
+        if (!originalUrl) {
+            return res.status(400).json({
+                error: "URL is required"
+            });
+        }
+
+        const result = await client.query(
+        `
+        SELECT id
+        FROM urls
+        WHERE original_url = $1
+        `,
+        [originalUrl]
+        );
+
+        if (result.rows.length > 0) {
+        const existingId =
+            Number(result.rows[0].id);
+
+        const existingShortCode =
+            generateShortCode(existingId);
+
+        return res.json({
+            shortUrl:
+                `${process.env.BASE_URL}/${existingShortCode}`
+        });
+        }
+
+        const insertResult = await client.query(
+        `
+        INSERT INTO urls (original_url)
+        VALUES ($1)
+        RETURNING id
+        `,
+        [originalUrl]
+        );
+
+        const newId =
+        Number(insertResult.rows[0].id);
+
+        const shortCode =
+        generateShortCode(newId);
+
+        res.json({
+        shortUrl:
+            `${process.env.BASE_URL}/${shortCode}`
+        });
+    
+    }catch(err){
+        console.error(err);
+        res.status(500).json({
+        error: "Something went wrong. Please try again later."
         });
     }
-
-    const result = await client.query(
-    `
-    SELECT id
-    FROM urls
-    WHERE original_url = $1
-    `,
-    [originalUrl]
-    );
-
-    if (result.rows.length > 0) {
-    const existingId =
-        Number(result.rows[0].id);
-
-    const existingShortCode =
-        generateShortCode(existingId);
-
-    return res.json({
-        shortUrl:
-            `http://localhost:3000/${existingShortCode}`
-    });
-    }
-
-    const insertResult = await client.query(
-    `
-    INSERT INTO urls (original_url)
-    VALUES ($1)
-    RETURNING id
-    `,
-    [originalUrl]
-    );
-
-    const newId =
-    Number(insertResult.rows[0].id);
-
-    const shortCode =
-    generateShortCode(newId);
-
-    res.json({
-    shortUrl:
-        `http://localhost:3000/${shortCode}`
-    });
-
 });
 
 function getIdFromShortCode(shortCode) {
@@ -110,27 +132,35 @@ function getIdFromShortCode(shortCode) {
 }
 
 app.get("/:shortCode", async(req, res) => {
-    const shortCode = req.params.shortCode;
+    try{
+        const shortCode = req.params.shortCode;
 
-    const id = getIdFromShortCode(shortCode);
+        const id = getIdFromShortCode(shortCode);
 
-    const result= await client.query(
-        ` 
-        SELECT original_url
-        FROM urls
-        WHERE id= $1
-        `,
-        [id]
-    );
+        const result= await client.query(
+            ` 
+            SELECT original_url
+            FROM urls
+            WHERE id= $1
+            `,
+            [id]
+        );
 
-    if (result.rows.length === 0) {
-        return res.status(404).send("URL not found");
+        if (result.rows.length === 0) {
+            return res.status(404).send("URL not found");
+        }
+
+        const originalUrl= result.rows[0].original_url;
+        res.redirect(originalUrl);
+    
+    }catch(err){
+        console.error(err);
+        res.status(500).json({
+        error: "Something went wrong. Please try again later."
+        });
     }
-
-    const originalUrl= result.rows[0].original_url;
-    res.redirect(originalUrl);
 });
 
 app.listen(process.env.PORT, () => {
-    console.log("Server is running on port 3000");
+    console.log(`Server is running on port ${process.env.PORT}`);
 });
