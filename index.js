@@ -1,6 +1,6 @@
 const express = require("express");
 require("dotenv").config();
-const { Client } = require("pg");
+const { Pool } = require("pg");
 
 const {
     PORT,
@@ -8,12 +8,13 @@ const {
     DB_PORT,
     DB_USER,
     DB_PASSWORD,
-    DB_NAME
+    DB_NAME,
+    BASE_URL 
 } = process.env;
 
-const client = new Client({
+const pool = new Pool({
     host: DB_HOST,
-    port: DB_PORT,
+    port: Number(DB_PORT),
     user: DB_USER,
     password: DB_PASSWORD,
     database: DB_NAME
@@ -25,13 +26,21 @@ if (!DB_PASSWORD) {
     );
 }
 
-client.connect()
-    .then(() => {
+async function startServer() {
+    try {
+        await pool.query("SELECT 1");
+
         console.log("Connected to PostgreSQL");
-    })
-    .catch((err) => {
-        console.error("Connection failed", err);
-    });
+
+        app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+        });
+
+    } catch (err) {
+        console.error("Database connection failed:", err);
+        process.exit(1);
+    }
+}
 
 const app = express();
 
@@ -65,7 +74,7 @@ app.post("/shorten", async (req, res) => {
             });
         }
 
-        const result = await client.query(
+        const result = await pool.query(
         `
         SELECT id
         FROM urls
@@ -87,7 +96,7 @@ app.post("/shorten", async (req, res) => {
         });
         }
 
-        const insertResult = await client.query(
+        const insertResult = await pool.query(
         `
         INSERT INTO urls (original_url)
         VALUES ($1)
@@ -104,11 +113,11 @@ app.post("/shorten", async (req, res) => {
 
         res.json({
         shortUrl:
-            `${process.env.BASE_URL}/${shortCode}`
+            `${BASE_URL}/${shortCode}`
         });
     
     }catch(err){
-        console.error(err);
+        console.error("POST /shorten failed:", err);
         res.status(500).json({
         error: "Something went wrong. Please try again later."
         });
@@ -137,7 +146,7 @@ app.get("/:shortCode", async(req, res) => {
 
         const id = getIdFromShortCode(shortCode);
 
-        const result= await client.query(
+        const result= await pool.query(
             ` 
             SELECT original_url
             FROM urls
@@ -154,13 +163,11 @@ app.get("/:shortCode", async(req, res) => {
         res.redirect(originalUrl);
     
     }catch(err){
-        console.error(err);
+        console.error("GET /:shortCode failed:", err);
         res.status(500).json({
         error: "Something went wrong. Please try again later."
         });
     }
 });
 
-app.listen(process.env.PORT, () => {
-    console.log(`Server is running on port ${process.env.PORT}`);
-});
+startServer();
