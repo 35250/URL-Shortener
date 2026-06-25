@@ -92,7 +92,7 @@ app.post("/shorten", async (req, res) => {
 
         return res.json({
             shortUrl:
-                `${process.env.BASE_URL}/${existingShortCode}`
+                `${BASE_URL}/${existingShortCode}`
         });
         }
 
