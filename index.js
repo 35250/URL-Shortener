@@ -47,16 +47,20 @@ app.use(express.json());
 
 app.get("/", (req, res) => {
     res.send(`
-        <h2>URL Shortener API</h2>
+        <html>
+        <body style="font-family:Arial, sans-serif; padding:20px;">
+            <h2>URL Shortener API</h2>
 
-        <h2>Status: Live</h2>
+            <p>Status: Live</p>
 
-        <h2>Available Endpoints</h2>
+            <p>Available Endpoints</p>
 
-        <ul>
-            <h2>POST /shorten</h2>
-            <h2>GET /:shortCode</h2>
-        </ul>
+            <ul>
+                <li>POST /shorten</li>
+                <li>GET /:shortCode</li>
+            </ul>
+        </body>
+        </html>
     `);
 });
 
