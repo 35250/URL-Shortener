@@ -43,8 +43,18 @@ async function startServer() {
 }
 
 const app = express();
-
 app.use(express.json());
+
+app.get("/", (req, res) => {
+    res.json({
+        project: "URL Shortener API",
+        status: "Live",
+        endpoints: {
+            shorten: "POST /shorten",
+            redirect: "GET /:shortCode"
+        }
+    });
+});
 
 function generateShortCode(id) {
     const chars =
