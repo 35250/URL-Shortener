@@ -46,14 +46,13 @@ const app = express();
 app.use(express.json());
 
 app.get("/", (req, res) => {
-    res.json({
-        project: "URL Shortener API",
-        status: "Live",
-        endpoints: {
-            shorten: "POST /shorten",
-            redirect: "GET /:shortCode"
-        }
-    });
+    res.send(`
+Project: URL Shortener API
+Status: Live
+Endpoints:
+    POST /shorten
+    GET /:shortCode
+`);
 });
 
 function generateShortCode(id) {
