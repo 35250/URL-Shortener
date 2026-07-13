@@ -92,6 +92,25 @@ app.post("/shorten", async (req, res) => {
             });
         }
 
+        let parsedUrl;
+
+        try {
+            parsedUrl = new URL(originalUrl);
+        } catch {
+            return res.status(400).json({
+                error: "Invalid URL"
+            });
+        }
+        
+        if (
+            parsedUrl.protocol !== "http:" &&
+            parsedUrl.protocol !== "https:"
+        ) {
+            return res.status(400).json({
+                error: "Only HTTP and HTTPS URLs are supported"
+            });
+        }
+
         const result = await pool.query(
         `
         SELECT id
