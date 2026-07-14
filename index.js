@@ -113,44 +113,22 @@ app.post("/shorten", async (req, res) => {
 
         const result = await pool.query(
         `
-        SELECT id
-        FROM urls
-        WHERE original_url = $1
-        `,
-        [originalUrl]
-        );
-
-        if (result.rows.length > 0) {
-        const existingId =
-            Number(result.rows[0].id);
-
-        const existingShortCode =
-            generateShortCode(existingId);
-
-        return res.json({
-            shortUrl:
-                `${BASE_URL}/${existingShortCode}`
-        });
-        }
-
-        const insertResult = await pool.query(
-        `
         INSERT INTO urls (original_url)
         VALUES ($1)
-        RETURNING id
+        ON CONFLICT (original_url)
+        DO UPDATE
+        SET original_url = EXCLUDED.original_url
+        RETURNING id;
         `,
         [originalUrl]
         );
-
-        const newId =
-        Number(insertResult.rows[0].id);
-
-        const shortCode =
-        generateShortCode(newId);
-
-        res.json({
-        shortUrl:
-            `${BASE_URL}/${shortCode}`
+        
+        const id = Number(result.rows[0].id);
+        
+        const shortCode = generateShortCode(id);
+        
+        return res.json({
+            shortUrl: `${BASE_URL}/${shortCode}`
         });
     
     }catch(err){
