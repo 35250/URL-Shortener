@@ -271,21 +271,6 @@ Short URL
 
 ---
 
-# Future Improvements
-
-* URL validation
-* Click analytics
-* Redis caching
-* Custom aliases
-* Expiration support
-* Rate limiting
-* Docker support
-* CI/CD pipeline
-* Authentication
-* Dashboard
-
----
-
 # Author
 
 **Ayan Dey**
